@@ -1,8 +1,8 @@
 import os
 import streamlit as st
 import pandas as pd
-# from utils.pdf_processor import PDFProcessor
-# from utils.ai_analyzer import AIAnalyzer
+from utils.pdf_processor import PDFProcessor
+from utils.ai_analyzer import AIAnalyzer
 from utils.data_exporter import DataExporter
 from dotenv import load_dotenv
 import time
@@ -216,14 +216,128 @@ def run_single_analysis():
 
 def process_documents(old_file, new_file):
     """Process comparative analysis."""
-    st.warning("Análise de IA temporariamente desativada para diagnóstico.")
-    time.sleep(2)
+    reset_state(full=False)
+    st.session_state.processing_complete = False
+    progress_bar = st.progress(0, "Iniciando análise comparativa...")
+    status_text = st.empty()
+    
+    try:
+        pdf_processor = PDFProcessor()
+        ai_analyzer = AIAnalyzer(st.session_state.selected_model)
+        
+        def extract(file, name, progress_start, progress_end):
+            status_text.info(f"📖 Extraindo texto de: {name}")
+            if st.session_state.use_chunking:
+                chunks = pdf_processor.extract_text_in_chunks(file, st.session_state.pages_per_chunk)
+                st.session_state.ai_logs.append({"step": f"Extração de Chunks ({name})", "chunks": len(chunks)})
+                
+                def progress_callback(idx, total, sp, ep):
+                    progress = progress_start + int(((idx+1) / total) * (progress_end - progress_start))
+                    progress_bar.progress(progress)
+                    status_text.info(f"🤖 Analisando {name} - Bloco {idx+1}/{total} (pág. {sp}-{ep})")
+
+                creditors, pre_consolidation_count = ai_analyzer.extract_creditors_from_chunks(chunks, name, progress_callback)
+                st.session_state.ai_logs.append({
+                    "step": f"Consolidação IA ({name})",
+                    "creditors_before": pre_consolidation_count,
+                    "creditors_after": len(creditors),
+                    "reduction": pre_consolidation_count - len(creditors)
+                })
+                return creditors
+            else:
+                text = pdf_processor.extract_text(file)
+                st.session_state.ai_logs.append({"step": f"Extração de Texto ({name})", "length": len(text)})
+                progress_bar.progress(progress_start + 5)
+                status_text.info(f"🤖 Analisando {name} com IA...")
+                creditors, count = ai_analyzer.extract_creditors(text, name)
+                st.session_state.ai_logs.append({
+                    "step": f"Extração IA ({name})",
+                    "creditors_found": count,
+                    "processing_mode": "full"
+                })
+                progress_bar.progress(progress_end)
+                return creditors
+
+        old_creditors = extract(old_file, "QGC Anterior", 5, 45)
+        new_creditors = extract(new_file, "QGC Atual", 45, 85)
+        
+        st.session_state.ai_logs.append({
+            "step": "Extração de Credores Concluída",
+            "old_creditors_count": len(old_creditors),
+            "new_creditors_count": len(new_creditors),
+        })
+
+        status_text.info("⚖️ Comparando listas de credores com IA...")
+        progress_bar.progress(90)
+        comparison_results = ai_analyzer.compare_creditors_with_ai(old_creditors, new_creditors)
+        
+        st.session_state.comparison_results = comparison_results
+        st.session_state.processing_complete = True
+        
+        progress_bar.progress(100)
+        status_text.success("✅ Análise comparativa concluída!")
+        time.sleep(1)
+        st.rerun()
+
+    except Exception as e:
+        status_text.error(f"❌ Erro no processamento: {e}")
+        st.exception(e)
+        progress_bar.empty()
 
 
 def process_single_document(qgc_file):
     """Process single analysis."""
-    st.warning("Análise de IA temporariamente desativada para diagnóstico.")
-    time.sleep(2)
+    reset_state(full=False)
+    st.session_state.processing_complete = False
+    progress_bar = st.progress(0, "Iniciando análise do documento...")
+    status_text = st.empty()
+
+    try:
+        pdf_processor = PDFProcessor()
+        ai_analyzer = AIAnalyzer(st.session_state.selected_model)
+
+        status_text.info("📖 Extraindo texto do PDF...")
+        if st.session_state.use_chunking:
+            chunks = pdf_processor.extract_text_in_chunks(qgc_file, st.session_state.pages_per_chunk)
+            st.session_state.ai_logs.append({"step": "Extração de Chunks", "chunks": len(chunks)})
+            
+            def progress_callback(idx, total, sp, ep):
+                progress = 10 + int(((idx+1) / total) * 80)
+                progress_bar.progress(progress)
+                status_text.info(f"🤖 Analisando Bloco {idx+1}/{total} (pág. {sp}-{ep})")
+
+            creditors, pre_consolidation_count = ai_analyzer.extract_creditors_from_chunks(chunks, qgc_file.name, progress_callback)
+            st.session_state.ai_logs.append({
+                "step": "Consolidação IA",
+                "creditors_before": pre_consolidation_count,
+                "creditors_after": len(creditors),
+                "reduction": pre_consolidation_count - len(creditors)
+            })
+        else:
+            text = pdf_processor.extract_text(qgc_file)
+            st.session_state.ai_logs.append({"step": "Extração de Texto", "length": len(text)})
+            progress_bar.progress(20)
+            status_text.info("🤖 Analisando documento com IA...")
+            creditors, count = ai_analyzer.extract_creditors(text, qgc_file.name)
+            st.session_state.ai_logs.append({
+                "step": "Extração IA",
+                "creditors_found": count,
+                "processing_mode": "full"
+            })
+            progress_bar.progress(90)
+
+        st.session_state.single_analysis_results = creditors
+        st.session_state.processing_complete = True
+
+        progress_bar.progress(100)
+        status_text.success("✅ Análise do documento concluída!")
+        time.sleep(1)
+        st.rerun()
+
+    except Exception as e:
+        status_text.error(f"❌ Erro no processamento: {e}")
+        st.exception(e)
+        progress_bar.empty()
 
 
 def display_comparison_results(results, show_logs=False):
