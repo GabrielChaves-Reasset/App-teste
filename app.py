@@ -1,7 +1,7 @@
 import os
 import streamlit as st
 import pandas as pd
-from utils.pdf_processor import PDFProcessor
+# from utils.pdf_processor import PDFProcessor
 # from utils.ai_analyzer import AIAnalyzer
 from utils.data_exporter import DataExporter
 from dotenv import load_dotenv
