@@ -48,6 +48,9 @@ class AIAnalyzer:
             
             # Extract and parse AI response
             ai_response = response.get('choices', [{}])[0].get('message', {}).get('content', '')
+
+            if not ai_response:
+                raise ValueError(f"A resposta da IA estava vazia. Resposta completa do fal_client: {response}")
             
             self.logger.info(f"AI Response length: {len(ai_response)} characters")
             self.logger.debug(f"Raw AI Response: {ai_response[:500]}...")
@@ -273,6 +276,9 @@ IMPORTANTE:
             )
             
             ai_response = response.get('choices', [{}])[0].get('message', {}).get('content', '')
+
+            if not ai_response:
+                raise ValueError(f"A resposta da IA (comparação) estava vazia. Resposta completa do fal_client: {response}")
             
             self.logger.info(f"AI Comparison Response length: {len(ai_response)} characters")
             self.logger.debug(f"Raw AI Comparison Response: {ai_response[:500]}...")
