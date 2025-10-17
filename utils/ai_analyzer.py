@@ -20,9 +20,6 @@ class AIAnalyzer:
         self.model_id = model_id
         self.fal_key = os.getenv("FAL_KEY")
         self.logger = logger
-        
-        if not self.fal_key:
-            raise ValueError("FAL_KEY environment variable not found")
     
     def extract_creditors(self, pdf_text: str, document_name: str) -> tuple[List[Dict[str, Any]], int]:
         """
