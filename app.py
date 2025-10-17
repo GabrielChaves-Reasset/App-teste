@@ -17,33 +17,13 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom CSS for better UI
-st.markdown("""
-<style>
-    .main-header {
-        padding: 1rem 0;
-        border-bottom: 2px solid #f0f2f6;
-        margin-bottom: 2rem;
-    }
-    .metric-card {
-        background: white;
-        padding: 1rem;
-        border-radius: 0.5rem;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .upload-section {
-        border: 2px dashed #cccccc;
-        border-radius: 10px;
-        padding: 20px;
-        text-align: center;
-        margin: 10px 0;
-    }
-    .success-upload {
-        border-color: #28a745;
-        background-color: #f8fff9;
-    }
-</style>
-""", unsafe_allow_html=True)
+# Function to load external CSS
+def load_css(file_name):
+    with open(file_name) as f:
+        st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
+
+# Load custom CSS
+load_css("style.css")
 
 # Initialize session state
 if 'comparison_results' not in st.session_state:
